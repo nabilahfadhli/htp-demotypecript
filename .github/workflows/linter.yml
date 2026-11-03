@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4 # Reverted from v6 to stable v4
+        uses: actions/checkout@v7 # Reverted from v6 to stable v4
         with:
           fetch-depth: 0
 
