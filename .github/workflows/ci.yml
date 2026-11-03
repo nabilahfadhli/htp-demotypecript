@@ -7,51 +7,72 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  test-typescript:
-    name: TypeScript Tests
+  build-and-test:
+    name: Build, Lint, and Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version-file: .node-version
+          node-version: '24'
           cache: npm
 
       - name: Install Dependencies
         id: npm-ci
         run: npm ci
 
-      - name: Check Format
+      - name: Bundle and Format TypeScript into JavaScript
+        id: npm-bundle
+        run: npm run bundle
+
+      # - name: Automatically Commit and Push Bundle & Format Fixes
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #   with:
+      #     commit_message: "chore: automated bundle and format fixes [skip ci]"
+      #     file_pattern: 'dist/* src/* action.yml'
+
+      - name: Automatically Commit and Push Bundle & Format Fixes
+        id: git-push-bundle
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage the specific targeted directories
+          git add dist/ src/main.ts action.yml
+          
+          # Safely evaluate differences without letting bash crash on exit code 1
+          if git diff --cached --quiet; then
+            echo "No compiler or formatting bundle changes detected. Skipping push."
+          else
+            echo "Bundle changes detected! Committing changes..."
+            git commit -m "chore: automated bundle and format fixes [skip ci]"
+            git push
+          fi
+        shell: bash
+
+      - name: Check Formatting Standards
         id: npm-format-check
         run: npm run format:check
 
-      - name: Lint
+      - name: Run Code Linter
         id: npm-lint
         run: npm run lint
 
-      - name: Test
+      - name: Execute Jest Unit Tests
         id: npm-ci-test
         run: npm run ci-test
-
-  test-action:
-    name: GitHub Actions Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        id: checkout
-        uses: actions/checkout@v6
 
       - name: Test Local Action
         id: test-action
