@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup Node.js (v24 Environment)
         id: setup-node
-        uses: actions/setup-node@v4 # Reverted from v6 to stable v4
+        uses: actions/setup-node@v7 # Reverted from v6 to stable v4
         with:
           node-version: '24' # Guarantees Node 24 runtime support for engine matches
           cache: npm
