@@ -10,18 +10,46 @@ export async function run(): Promise<void> {
   try {
     const ms: string = core.getInput('milliseconds')
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const milliseconds = Number.parseInt(ms, 10)
 
-    // Log the current timestamp, wait, then log the new timestamp
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+      throw new Error('milliseconds must be a non-negative number')
+    }
+
+    core.debug(`Waiting ${milliseconds} milliseconds ...`)
+
     core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
+    await wait(milliseconds)
     core.debug(new Date().toTimeString())
 
-    // Set outputs for other workflow steps to use
     core.setOutput('time', new Date().toTimeString())
+
+    await core.summary
+      .addHeading('RKM Advanced Job Summary', 2)
+      .addImage(
+        'https://octodex.github.com/images/droidtocat.png',
+        'Droidtocat',
+        {
+          width: '64',
+          height: '64'
+        }
+      )
+      .addTable([
+        [
+          { data: 'File', header: true },
+          { data: 'Result', header: true }
+        ],
+        ['foo.js', 'Pass'],
+        ['bar.js', 'Fail'],
+        ['test.js', 'Pass']
+      ])
+      .addLink('My custom link', 'https://writeabout.net')
+      .write()
   } catch (error) {
-    // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) {
+      core.setFailed(error.message)
+    } else {
+      core.setFailed(String(error))
+    }
   }
 }
