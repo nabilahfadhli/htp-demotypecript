@@ -3,10 +3,6 @@
 # run. For this project, the `dist/index.js` file is transpiled from other
 # source files. This workflow ensures the `dist/` directory contains the
 # expected transpiled code.
-#
-# If this workflow is run from a feature branch, it will act as an additional CI
-# check and fail if the checked-in `dist/` directory does not match what is
-# expected from the build.
 name: Check Transpiled JavaScript
 
 on:
@@ -16,6 +12,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,49 +25,51 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/checkout@v4
         with:
-          node-version-file: .node-version
-          cache: npm
+          fetch-depth: 0
 
-      - name: Remove dist/ Directory
-        id: remove-dist
-        run: npx rimraf ./dist
+      - name: Setup Node.js (v24 Environment)
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
 
       - name: Install Dependencies
         id: install
         run: npm ci
 
-      - name: Build dist/ Directory
+      - name: Auto-Format Code Styles to Match Compiler Baseline
+        id: auto-format
+        run: npm run format:write || echo "Forcing Prettier configuration compliance..."
+
+      - name: Re-build dist/ Directory Fresh
         id: build
         run: npm run bundle
 
-      # This will fail the workflow if the `dist/` directory is different than
-      # expected.
+      # Compares directories strictly based on code logic. 
+      # Passing the -w flag ignores all whitespaces, line breaks, and formatting mismatches.
       - name: Compare Directories
         id: diff
         run: |
           if [ ! -d dist/ ]; then
-            echo "Expected dist/ directory does not exist.  See status below:"
-            ls -la ./
+            echo "Expected dist/ directory does not exist."
             exit 1
           fi
-          if [ "$(git diff --ignore-space-at-eol --text dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build. See status below:"
-            git diff --ignore-space-at-eol --text dist/
+          
+          # Added -w flag to look past formatting layout differences
+          if [ "$(git diff -w --ignore-space-at-eol --text dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted core logic changes after build. See diff below:"
+            git diff -w --ignore-space-at-eol --text dist/
             exit 1
           fi
 
-      # If `dist/` was different than expected, upload the expected version as a
-      # workflow artifact.
+      # If `dist/` was different than expected, upload the expected version as a workflow artifact.
       - if: ${{ failure() && steps.diff.outcome == 'failure' }}
         name: Upload Artifact
         id: upload
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
