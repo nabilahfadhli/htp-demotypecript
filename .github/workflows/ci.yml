@@ -13,35 +13,27 @@ permissions:
   contents: write
 
 jobs:
-  build-and-test:
-    name: Build, Lint, and Test
+  # Job 1: Build production files, run formatters, and update the repository
+  generate-and-push:
+    name: Auto-Bundle and Format
     runs-on: ubuntu-latest
-
+    outputs:
+      changes_pushed: ${{ steps.git-push-bundle.outputs.changes_pushed }}
     steps:
       - name: Checkout
-        id: checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
 
       - name: Install Dependencies
-        id: npm-ci
         run: npm ci
 
       - name: Bundle and Format TypeScript into JavaScript
-        id: npm-bundle
         run: npm run bundle
-
-      # - name: Automatically Commit and Push Bundle & Format Fixes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: "chore: automated bundle and format fixes [skip ci]"
-      #     file_pattern: 'dist/* src/* action.yml'
 
       - name: Automatically Commit and Push Bundle & Format Fixes
         id: git-push-bundle
@@ -49,29 +41,47 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Stage the specific targeted directories
           git add dist/ src/main.ts action.yml
           
-          # Safely evaluate differences without letting bash crash on exit code 1
           if git diff --cached --quiet; then
             echo "No compiler or formatting bundle changes detected. Skipping push."
+            echo "changes_pushed=false" >> $GITHUB_OUTPUT
           else
             echo "Bundle changes detected! Committing changes..."
             git commit -m "chore: automated bundle and format fixes [skip ci]"
             git push
+            echo "changes_pushed=true" >> $GITHUB_OUTPUT
           fi
         shell: bash
 
+  # Job 2: Verifies code quality. Only runs after Job 1 completes.
+  # If Job 1 pushed new code, this step safely skips since [skip ci] triggers a fresh workflow execution.
+  verify-and-test:
+    name: Build, Lint, and Test
+    needs: generate-and-push
+    if: needs.generate-and-push.outputs.changes_pushed != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Check Formatting Standards
-        id: npm-format-check
         run: npm run format:check
 
       - name: Run Code Linter
-        id: npm-lint
         run: npm run lint
 
       - name: Execute Jest Unit Tests
-        id: npm-ci-test
         run: npm run ci-test
 
       - name: Test Local Action
@@ -81,5 +91,4 @@ jobs:
           milliseconds: 2000
 
       - name: Print Output
-        id: output
         run: echo "${{ steps.test-action.outputs.time }}"
