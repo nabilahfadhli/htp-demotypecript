@@ -28291,17 +28291,16 @@ async function wait(milliseconds) {
 async function run() {
     try {
         const ms = getInput('milliseconds');
-        const milliseconds = Number.parseInt(ms, 10);
-        if (!Number.isFinite(milliseconds) || milliseconds < 0) {
-            throw new Error('milliseconds must be a non-negative number');
-        }
-        debug(`Waiting ${milliseconds} milliseconds ...`);
+        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
+        debug(`Waiting ${ms} milliseconds ...`);
+        // Log the current timestamp, wait, then log the new timestamp
         debug(new Date().toTimeString());
-        await wait(milliseconds);
+        await wait(parseInt(ms, 10));
         debug(new Date().toTimeString());
+        // Set outputs for other workflow steps to use
         setOutput('time', new Date().toTimeString());
-        await summary
-            .addHeading('RKM Advanced Job Summary', 2)
+        summary
+            .addHeading('RKM Advanced Job Summary', 'h2')
             .addImage('https://octodex.github.com/images/droidtocat.png', 'Droidtocat', {
             width: '64',
             height: '64'
@@ -28311,20 +28310,17 @@ async function run() {
                 { data: 'File', header: true },
                 { data: 'Result', header: true }
             ],
-            ['foo.js', 'Pass'],
-            ['bar.js', 'Fail'],
-            ['test.js', 'Pass']
+            ['foo.js', 'Pass '],
+            ['bar.js', 'Fail '],
+            ['test.js', 'Pass ']
         ])
             .addLink('My custom link', 'https://writeabout.net')
             .write();
     }
     catch (error) {
-        if (error instanceof Error) {
+        // Fail the workflow run if an error occurs
+        if (error instanceof Error)
             setFailed(error.message);
-        }
-        else {
-            setFailed(String(error));
-        }
     }
 }
 
