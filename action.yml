@@ -1,6 +1,8 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: TypeScript Action Recipe
+description:
+  Waites for some milliseconds, writes an awesome job summary to the workflow
+  output and returns the current date and time.
+author: Nabilah
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -20,5 +22,5 @@ outputs:
     description: Your output description here
 
 runs:
-  using: node24
+  using: node26
   main: dist/index.js
